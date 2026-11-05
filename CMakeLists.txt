@@ -11,9 +11,10 @@ add_executable(Reliable-UDP)
 target_sources(Reliable-UDP
     PRIVATE
         src/main.cpp
+        src/udpSocket.cpp
 )
 
 target_include_directories(Reliable-UDP
     PRIVATE
-        src/include
+        ${PROJECT_SOURCE_DIR}/include
 )
