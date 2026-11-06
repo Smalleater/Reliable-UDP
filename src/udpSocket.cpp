@@ -1,5 +1,7 @@
 #include "udpSocket.hpp"
 
+
+
 NetworkRuntime::~NetworkRuntime()
 {
     Term();
@@ -69,6 +71,65 @@ bool UdpSocket::Bind(uint16_t port)
     {
         return false;
     }
+
+    return true;
+}
+
+bool UdpSocket::SendTo(const UdpMessage &message)
+{
+    sockaddr_in destination{};
+
+    destination.sin_family = AF_INET;
+    destination.sin_port = htons(message.port);
+
+    if (inet_pton(AF_INET, message.ip.c_str(), &destination.sin_addr) != 1)
+    {
+        return false;
+    }
+
+    int result = sendto(
+        m_socketHandle, 
+        message.data.c_str(), 
+        message.data.size(), 
+        0, 
+        reinterpret_cast<sockaddr*>(&destination), 
+        sizeof(destination)
+    );
+
+    return result < 0 ? false : true; 
+}
+
+bool UdpSocket::Received(UdpMessage &message)
+{
+    char buffer[MTU_SIZE];
+
+    sockaddr_in sender{};
+    SocketLenght senderLenght = sizeof(sender);
+
+    int received = recvfrom(
+        m_socketHandle,
+        buffer,
+        sizeof(buffer),
+        0,
+        reinterpret_cast<sockaddr*>(&sender),
+        &senderLenght
+    );
+
+    if (received < 0)
+    {
+        return false;
+    }
+
+    char ip[INET_ADDRSTRLEN];
+
+    if (inet_ntop(AF_INET, &sender.sin_addr, ip, sizeof(ip)) == nullptr)
+    {
+        return false;
+    }
+
+    message.data.assign(buffer, received);
+    message.ip = ip;
+    message.port = ntohs(sender.sin_port);
 
     return true;
 }

@@ -2,6 +2,9 @@
 #define UDP_SOCKET_HPP
 
 #include <cstdint>
+#include <string>
+
+constexpr uint16_t MTU_SIZE = 1200;
 
 #ifdef _WIN32
 
@@ -56,6 +59,13 @@ public:
 private:
 };
 
+struct UdpMessage
+{
+    std::string data;
+    std::string ip;
+    uint16_t port;
+};
+
 class UdpSocket
 {
 public:
@@ -70,8 +80,11 @@ public:
 
     bool Bind(uint16_t port);
 
+    bool SendTo(const UdpMessage& message);
+    bool Received(UdpMessage& message);
+
 private:
     SocketHandle m_socketHandle;
 };
 
-#endif #UDP_SOCKET_HPP
+#endif
