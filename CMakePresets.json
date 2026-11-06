@@ -24,19 +24,37 @@
             }
         },
         {
-            "name": "debug-gcc",
-            "displayName": "Debug (GCC)",
+            "name": "debug-windows-gcc",
+            "displayName": "Debug (Windows GCC)",
             "inherits": ["base", "gcc"],
-            "binaryDir": "${sourceDir}/build/debug-gcc",
+            "binaryDir": "${sourceDir}/build/windows/debug-gcc",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
             }
         },
         {
-            "name": "release-gcc",
-            "displayName": "Release (GCC)",
+            "name": "release-windows-gcc",
+            "displayName": "Release (Windows GCC)",
             "inherits": ["base", "gcc"],
-            "binaryDir": "${sourceDir}/build/release-gcc",
+            "binaryDir": "${sourceDir}/build/windows/release-gcc",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "debug-linux-gcc",
+            "displayName": "Debug (Linux GCC)",
+            "inherits": ["base", "gcc"],
+            "binaryDir": "${sourceDir}/build/wsl/debug-gcc",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "release-linux-gcc",
+            "displayName": "Release (Linux GCC)",
+            "inherits": ["base", "gcc"],
+            "binaryDir": "${sourceDir}/build/wsl/release-gcc",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             }
@@ -44,12 +62,20 @@
     ],
     "buildPresets": [
         {
-            "name": "debug-gcc",
-            "configurePreset": "debug-gcc"
+            "name": "debug-windows-gcc",
+            "configurePreset": "debug-windows-gcc"
         },
         {
-            "name": "release-gcc",
-            "configurePreset": "release-gcc"
+            "name": "release-windows-gcc",
+            "configurePreset": "release-windows-gcc"
+        },
+        {
+            "name": "debug-linux-gcc",
+            "configurePreset": "debug-linux-gcc"
+        },
+        {
+            "name": "release-linux-gcc",
+            "configurePreset": "release-linux-gcc"
         }
     ]
 }
