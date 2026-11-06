@@ -75,6 +75,33 @@ bool UdpSocket::Bind(uint16_t port)
     return true;
 }
 
+bool UdpSocket::SetNonBlocking(bool enable)
+{
+#ifdef _WIN32
+    u_long mode = enable;
+
+    if (ioctlsocket(m_socketHandle, FIONBIO, &mode) != NO_ERROR)
+    {
+        return false;
+    }
+#else
+    int flags = fcntl(m_socketHandle, F_GETFL);
+    if (flags == -1)
+    {
+        return false;
+    }
+
+    flags = enable ? flags | O_NONBLOCK : flags & ~O_NONBLOCK;
+
+    if (fcntl(m_socketHandle, F_SETFL, flags) == -1)
+    {
+        return false;
+    }
+#endif
+
+    return true;
+}
+
 bool UdpSocket::SendTo(const UdpMessage &message)
 {
     sockaddr_in destination{};
@@ -106,7 +133,7 @@ bool UdpSocket::Received(UdpMessage &message)
     sockaddr_in sender{};
     SocketLenght senderLenght = sizeof(sender);
 
-    int received = recvfrom(
+    SocketReceived received = recvfrom(
         m_socketHandle,
         buffer,
         sizeof(buffer),
@@ -117,7 +144,24 @@ bool UdpSocket::Received(UdpMessage &message)
 
     if (received < 0)
     {
-        return false;
+#ifdef _WIN32
+        int error = WSAGetLastError();
+        if (error != WSAEWOULDBLOCK && error != WSAECONNRESET)
+        {
+            return false;
+        }
+#else
+        if (errno != EAGAIN && errno != EWOULDBLOCK)
+        {
+            return false;
+        }
+#endif
+
+        message.data.clear();
+        message.ip = "0";
+        message.port = 0;
+
+        return true;
     }
 
     char ip[INET_ADDRSTRLEN];

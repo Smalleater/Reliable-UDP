@@ -25,6 +25,12 @@ int main()
         return EXIT_FAILURE;
     }
 
+    if (!socket.SetNonBlocking(true))
+    {
+        printf("Failed to set the socket to non blocking mode");
+        return EXIT_FAILURE;
+    }
+
     UdpMessage receivedMessage;
 
     UdpMessage responseMessage;
@@ -36,6 +42,11 @@ int main()
         {
             printf("Failed to received message");
             return EXIT_FAILURE;
+        }
+
+        if (receivedMessage.data.size() == 0)
+        {
+            continue;
         }
 
         printf("Message received from %s:%u\ndata: %s\n", receivedMessage.ip.c_str(), receivedMessage.port, receivedMessage.data.c_str());

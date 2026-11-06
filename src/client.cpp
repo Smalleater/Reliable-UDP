@@ -1,4 +1,5 @@
 #include <iostream>
+#include <thread>
 
 #include "udpSocket.hpp"
 
@@ -19,9 +20,15 @@ int main()
         return EXIT_FAILURE;
     }
 
-    if (!socket.Bind(2027))
+    if (!socket.Bind(0))
     {
         printf("Failed to Bind the UDP socket\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!socket.SetNonBlocking(true))
+    {
+        printf("Failed to set the socket to non blocking mode");
         return EXIT_FAILURE;
     }
 
@@ -46,7 +53,14 @@ int main()
             return EXIT_FAILURE;
         }
 
+        if (responseMessage.data.size() == 0)
+        {
+            continue;
+        }
+
         printf("Received responce from server %s:%u\ndata: %s\n", responseMessage.ip.c_str(), responseMessage.port, responseMessage.data.c_str());
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 
     return EXIT_SUCCESS;

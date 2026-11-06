@@ -15,6 +15,7 @@ constexpr uint16_t MTU_SIZE = 1200;
 
 using SocketHandle = SOCKET;
 using SocketLenght = int;
+using SocketReceived = int;
 
 constexpr SocketHandle INVALID_SOCKET_HANDLE = INVALID_SOCKET;
 
@@ -26,10 +27,12 @@ constexpr SocketHandle INVALID_SOCKET_HANDLE = INVALID_SOCKET;
 #include <netinet/in.h>
 #include <unistd.h>
 #include <netdb.h>
+#include <fcntl.h>
 #include <cerrno>
 
 using SocketHandle = int;
 using SocketLenght = socklen_t;
+using SocketReceived = ssize_t;
 
 constexpr SocketHandle INVALID_SOCKET_HANDLE = -1;
 
@@ -79,6 +82,7 @@ public:
     void Term();
 
     bool Bind(uint16_t port);
+    bool SetNonBlocking(bool enable);
 
     bool SendTo(const UdpMessage& message);
     bool Received(UdpMessage& message);
