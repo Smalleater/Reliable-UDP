@@ -32,8 +32,14 @@ int main()
         return EXIT_FAILURE;
     }
 
+    socket.SetProtocolId(PROTOCOL_ID);
+
+    std::string messageStr = "Hello from client";
+
     UdpMessage sendMessage;
-    sendMessage.data = "Hello from client";
+    sendMessage.packetId = PacketId::Test;
+    sendMessage.data.insert(sendMessage.data.end(), reinterpret_cast<std::byte*>(messageStr.data()), 
+        reinterpret_cast<std::byte*>(messageStr.data() + messageStr.size()));
     sendMessage.ip = "127.0.0.1";
     sendMessage.port = 2026;
 
@@ -58,7 +64,10 @@ int main()
             continue;
         }
 
-        printf("Received responce from server %s:%u\ndata: %s\n", responseMessage.ip.c_str(), responseMessage.port, responseMessage.data.c_str());
+        std::string receivedStr(reinterpret_cast<char*>(responseMessage.data.data()));
+
+        printf("Received responce from server %s:%u\nPacketId: %u\ndata: %s\n", 
+            responseMessage.ip.c_str(), responseMessage.port, responseMessage.packetId, receivedStr.c_str());
 
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }

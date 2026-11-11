@@ -3,8 +3,12 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
+
+#include "networkCustomValues.hpp"
 
 constexpr uint16_t MTU_SIZE = 1200;
+constexpr uint8_t HEADER_SIZE = sizeof(uint16_t) + sizeof(PacketId);
 
 #ifdef _WIN32
 
@@ -15,7 +19,7 @@ constexpr uint16_t MTU_SIZE = 1200;
 
 using SocketHandle = SOCKET;
 using SocketLenght = int;
-using SocketReceived = int;
+using SocketDataSize = int;
 
 constexpr SocketHandle INVALID_SOCKET_HANDLE = INVALID_SOCKET;
 
@@ -32,7 +36,7 @@ constexpr SocketHandle INVALID_SOCKET_HANDLE = INVALID_SOCKET;
 
 using SocketHandle = int;
 using SocketLenght = socklen_t;
-using SocketReceived = ssize_t;
+using SocketDataSize = ssize_t;
 
 constexpr SocketHandle INVALID_SOCKET_HANDLE = -1;
 
@@ -64,7 +68,8 @@ private:
 
 struct UdpMessage
 {
-    std::string data;
+    PacketId packetId;
+    std::vector<std::byte> data;
     std::string ip;
     uint16_t port;
 };
@@ -81,14 +86,17 @@ public:
     bool Init();
     void Term();
 
-    bool Bind(uint16_t port);
+    void SetProtocolId(uint16_t protocolId);
     bool SetNonBlocking(bool enable);
+
+    bool Bind(uint16_t port);
 
     bool SendTo(const UdpMessage& message);
     bool Received(UdpMessage& message);
 
 private:
     SocketHandle m_socketHandle;
+    uint16_t m_protocolId;
 };
 
 #endif

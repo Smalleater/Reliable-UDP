@@ -1,6 +1,7 @@
 #include "udpSocket.hpp"
 
-
+#include <memory>
+#include <cstring>
 
 NetworkRuntime::~NetworkRuntime()
 {
@@ -29,7 +30,8 @@ void NetworkRuntime::Term()
 }
 
 UdpSocket::UdpSocket() : 
-    m_socketHandle(INVALID_SOCKET_HANDLE)
+    m_socketHandle(INVALID_SOCKET_HANDLE),
+    m_protocolId(0)
 {
 
 }
@@ -59,20 +61,9 @@ void UdpSocket::Term()
     }
 }
 
-bool UdpSocket::Bind(uint16_t port)
+void UdpSocket::SetProtocolId(uint16_t protocolId)
 {
-    sockaddr_in address{};
-
-    address.sin_family = AF_INET;
-    address.sin_port = htons(port);
-    address.sin_addr.s_addr = INADDR_ANY;
-
-    if (bind(m_socketHandle, reinterpret_cast<sockaddr*>(&address), sizeof(address)) < 0)
-    {
-        return false;
-    }
-
-    return true;
+    m_protocolId = protocolId;
 }
 
 bool UdpSocket::SetNonBlocking(bool enable)
@@ -102,6 +93,22 @@ bool UdpSocket::SetNonBlocking(bool enable)
     return true;
 }
 
+bool UdpSocket::Bind(uint16_t port)
+{
+    sockaddr_in address{};
+
+    address.sin_family = AF_INET;
+    address.sin_port = htons(port);
+    address.sin_addr.s_addr = INADDR_ANY;
+
+    if (bind(m_socketHandle, reinterpret_cast<sockaddr*>(&address), sizeof(address)) < 0)
+    {
+        return false;
+    }
+
+    return true;
+}
+
 bool UdpSocket::SendTo(const UdpMessage &message)
 {
     sockaddr_in destination{};
@@ -114,35 +121,54 @@ bool UdpSocket::SendTo(const UdpMessage &message)
         return false;
     }
 
-    int result = sendto(
+    SocketDataSize packetSize = HEADER_SIZE + message.data.size();
+    if (packetSize > MTU_SIZE)
+    {
+        return false;
+    }
+
+    std::vector<std::byte> packet(packetSize);
+
+    SocketDataSize writeOffset = 0;
+
+    std::memcpy(packet.data() + writeOffset, &m_protocolId, sizeof(uint16_t));
+    writeOffset += sizeof(uint16_t);
+
+    std::memcpy(packet.data() + writeOffset, &message.packetId, sizeof(PacketId));
+    writeOffset += sizeof(message.packetId);
+
+    std::memcpy(packet.data() + writeOffset, message.data.data(), message.data.size());
+    writeOffset += message.data.size();
+
+    SocketDataSize byteSent = sendto(
         m_socketHandle, 
-        message.data.c_str(), 
-        message.data.size(), 
+        reinterpret_cast<const char*>(packet.data()), 
+        packet.size(), 
         0, 
         reinterpret_cast<sockaddr*>(&destination), 
         sizeof(destination)
     );
 
-    return result < 0 ? false : true; 
+    return byteSent == packetSize;
 }
 
 bool UdpSocket::Received(UdpMessage &message)
 {
-    char buffer[MTU_SIZE];
+    std::vector<std::byte> packet(MTU_SIZE);
 
     sockaddr_in sender{};
     SocketLenght senderLenght = sizeof(sender);
 
-    SocketReceived received = recvfrom(
+    SocketDataSize byteReceived = recvfrom(
         m_socketHandle,
-        buffer,
-        sizeof(buffer),
+        reinterpret_cast<char*>(packet.data()),
+        packet.size(),
         0,
         reinterpret_cast<sockaddr*>(&sender),
         &senderLenght
     );
 
-    if (received < 0)
+    if (byteReceived < 0)
     {
 #ifdef _WIN32
         int error = WSAGetLastError();
@@ -156,7 +182,27 @@ bool UdpSocket::Received(UdpMessage &message)
             return false;
         }
 #endif
+        message.packetId = PacketId::None;
+        message.data.clear();
+        message.ip = "0";
+        message.port = 0;
 
+        return true;
+    }
+    else if (byteReceived < HEADER_SIZE || byteReceived > MTU_SIZE)
+    {
+        return false;
+    }
+
+    SocketDataSize readOffset = 0;
+
+    uint16_t protocolId = 0;
+    std::memcpy(&protocolId, packet.data() + readOffset, sizeof(uint16_t));
+    readOffset += sizeof(uint16_t);
+
+    if (protocolId != m_protocolId)
+    {
+        message.packetId = PacketId::None;
         message.data.clear();
         message.ip = "0";
         message.port = 0;
@@ -171,7 +217,10 @@ bool UdpSocket::Received(UdpMessage &message)
         return false;
     }
 
-    message.data.assign(buffer, received);
+    std::memcpy(&message.packetId, packet.data() + readOffset, sizeof(PacketId));
+    readOffset += sizeof(PacketId);
+
+    message.data.assign(packet.begin() + HEADER_SIZE, packet.end());
     message.ip = ip;
     message.port = ntohs(sender.sin_port);
 

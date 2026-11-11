@@ -31,10 +31,16 @@ int main()
         return EXIT_FAILURE;
     }
 
+    socket.SetProtocolId(PROTOCOL_ID);
+
     UdpMessage receivedMessage;
 
+    std::string responseStr = "Message received";
+
     UdpMessage responseMessage;
-    responseMessage.data = "Message received";
+    responseMessage.packetId = PacketId::None;
+    responseMessage.data.insert(responseMessage.data.end(), reinterpret_cast<std::byte*>(responseStr.data()), 
+        reinterpret_cast<std::byte*>(responseStr.data() + responseStr.size()));
 
     while (true)
     {
@@ -49,7 +55,10 @@ int main()
             continue;
         }
 
-        printf("Message received from %s:%u\ndata: %s\n", receivedMessage.ip.c_str(), receivedMessage.port, receivedMessage.data.c_str());
+        std::string receivedStr(reinterpret_cast<char*>(receivedMessage.data.data()));
+
+        printf("Message received from %s:%u\nPacketId: %u\ndata: %s\n", 
+            receivedMessage.ip.c_str(), receivedMessage.port, receivedMessage.packetId, receivedStr.c_str());
 
         responseMessage.ip = receivedMessage.ip;
         responseMessage.port = receivedMessage.port;
